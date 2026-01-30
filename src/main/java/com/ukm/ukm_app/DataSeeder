@@ -1,0 +1,127 @@
+// src/main/java/com/ukm/ukm_app/DataSeeder.java
+package com.ukm.ukm_app;
+
+import java.time.LocalDateTime;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.ukm.ukm_app.entity.Kegiatan;
+import com.ukm.ukm_app.entity.Ukm;
+import com.ukm.ukm_app.entity.User;
+import com.ukm.ukm_app.repository.KegiatanRepository;
+import com.ukm.ukm_app.repository.PendaftaranRepository;
+import com.ukm.ukm_app.repository.UkmRepository;
+import com.ukm.ukm_app.repository.UserRepository;
+
+@Component
+@Transactional
+public class DataSeeder implements CommandLineRunner {
+    
+    @Autowired
+    private UserRepository userRepository;
+    
+    @Autowired
+    private UkmRepository ukmRepository;
+    
+    @Autowired
+    private KegiatanRepository kegiatanRepository;
+    
+    @Autowired
+    private PendaftaranRepository pendaftaranRepository;
+    
+    private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    
+    @Override
+    public void run(String... args) throws Exception {
+        System.out.println("=== Seeding Database ===");
+        
+        // JANGAN HAPUS SEMUA DATA! Hanya seed jika kosong
+        if (userRepository.count() == 0) {
+            seedData();
+        } else {
+            System.out.println("Database already has data, skipping seeding.");
+        }
+    }
+    
+    private void seedData() {
+        // 1. Buat Admin Kampus TERLEBIH DAHULU
+        User adminKampus = new User();
+        adminKampus.setNim("ADMIN001");
+        adminKampus.setNama("Administrator Kampus");
+        adminKampus.setEmail("admin@kampus.com");
+        adminKampus.setPassword(encoder.encode("password123"));
+        adminKampus.setRole("ADMIN_KAMPUS");
+        userRepository.save(adminKampus);
+        System.out.println("Created Admin Kampus");
+        
+        // 2. Buat UKM DULU (tanpa ketua dulu)
+        String[] ukmList = {
+            "UKM Programming", "UKM Seni Musik", "UKM Olahraga", 
+            "UKM Bahasa Inggris", "UKM Karya Ilmiah"
+        };
+        
+        Ukm[] ukmEntities = new Ukm[ukmList.length];
+        
+        for (int i = 0; i < ukmList.length; i++) {
+            Ukm ukm = new Ukm();
+            ukm.setNama(ukmList[i]);
+            ukm.setDeskripsi("Unit Kegiatan Mahasiswa " + ukmList[i]);
+            // JANGAN set ketua dulu!
+            ukmEntities[i] = ukmRepository.save(ukm);
+            System.out.println("Created UKM: " + ukmList[i]);
+        }
+        
+        // 3. Sekarang buat Admin UKM dengan UKM yang sudah ada
+        for (int i = 0; i < ukmList.length; i++) {
+            User adminUkm = new User();
+            adminUkm.setNim("UKM00" + (i+1));
+            adminUkm.setNama("Admin " + ukmList[i]);
+            adminUkm.setEmail("admin" + (i+1) + "@ukm.com");
+            adminUkm.setPassword(encoder.encode("password123"));
+            adminUkm.setRole("ADMIN_UKM");
+            adminUkm.setUkm(ukmEntities[i]); // UKM sudah disave
+            userRepository.save(adminUkm);
+            
+            // Update UKM dengan ketua
+            ukmEntities[i].setKetua(adminUkm);
+            ukmRepository.save(ukmEntities[i]);
+            
+            System.out.println("Created Admin UKM for: " + ukmList[i]);
+        }
+        
+        // 4. Buat kegiatan untuk UKM
+        for (int i = 0; i < ukmEntities.length; i++) {
+            for (int j = 1; j <= 3; j++) {
+                Kegiatan kegiatan = new Kegiatan();
+                kegiatan.setJudul("Kegiatan " + j + " - " + ukmList[i]);
+                kegiatan.setDeskripsi("Deskripsi kegiatan ke-" + j);
+                kegiatan.setTanggal(LocalDateTime.now().plusDays(j * 7));
+                kegiatan.setLokasi("Gedung " + j + " Kampus");
+                kegiatan.setUkm(ukmEntities[i]);
+                kegiatanRepository.save(kegiatan);
+            }
+            System.out.println("Created 3 kegiatan for: " + ukmList[i]);
+        }
+        
+        // 5. Buat sample mahasiswa
+        for (int i = 1; i <= 5; i++) {
+            User mahasiswa = new User();
+            mahasiswa.setNim("MHS00" + i);
+            mahasiswa.setNama("Mahasiswa " + i);
+            mahasiswa.setEmail("mhs" + i + "@student.com");
+            mahasiswa.setPassword(encoder.encode("password123"));
+            mahasiswa.setRole("MAHASISWA");
+            userRepository.save(mahasiswa);
+            System.out.println("Created Mahasiswa " + i);
+        }
+        
+        System.out.println("=== Seeding Complete ===");
+        System.out.println("Admin Kampus: admin@kampus.com / password123");
+        System.out.println("Admin UKM: admin1@ukm.com / password123");
+        System.out.println("Mahasiswa: mhs1@student.com / password123");
+    }
+}

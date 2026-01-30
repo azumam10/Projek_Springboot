@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Admin</title>
+</head>
+<body>
+    <h1>Dashboard Admin Kampus</h1>
+    <div th:if="${user}">
+        <p>Welcome, <span th:text="${user.nama}"></span> (<span th:text="${user.role}"></span>)</p>
+        <p>Email: <span th:text="${user.email}"></span></p>
+    </div>
+    
+    <h2>Statistik:</h2>
+    <ul>
+        <li>Total UKM: <span th:text="${totalUkm}"></span></li>
+        <li>Total Mahasiswa: <span th:text="${totalMahasiswa}"></span></li>
+        <li>Total Admin UKM: <span th:text="${totalAdminUkm}"></span></li>
+    </ul>
+    
+    <h2>Daftar UKM:</h2>
+    <ul th:if="${listUkm}">
+        <li th:each="ukm : ${listUkm}" th:text="${ukm.nama}"></li>
+    </ul>
+    
+    <a href="/logout">Logout</a>
+    <hr>
+    <p>Debug Info:</p>
+    <p>User in session: <span th:text="${user}"></span></p>
+</body>
+</html>
