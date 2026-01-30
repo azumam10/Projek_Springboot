@@ -1,13 +1,13 @@
-<!-- src/main/resources/templates/mahasiswa/dashboard.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Mahasiswa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
 </head>
-<body>
+<body class="bg-light">
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
@@ -15,11 +15,11 @@
                 <i class="bi bi-people-fill"></i> Sistem UKM
             </a>
             <div class="navbar-nav ms-auto">
-                <span class="navbar-text me-3">
+                <span class="navbar-text me-3 text-white">
                     <i class="bi bi-person-circle"></i> 
                     <span th:text="${user.nama}"></span>
                 </span>
-                <a class="btn btn-outline-light" href="/logout">
+                <a class="btn btn-outline-light btn-sm" href="/logout">
                     <i class="bi bi-box-arrow-right"></i> Logout
                 </a>
             </div>
@@ -28,15 +28,15 @@
     
     <div class="container mt-4">
         <!-- Alert Messages -->
-        <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show">
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
             <i class="bi bi-check-circle-fill"></i>
-            <span th:text="${param.success}"></span>
+            <span th:text="${success}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         
-        <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show">
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
             <i class="bi bi-exclamation-circle-fill"></i>
-            <span th:text="${param.error}"></span>
+            <span th:text="${error}"></span>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         
@@ -44,13 +44,23 @@
         <div class="row mb-4">
             <div class="col">
                 <h2><i class="bi bi-speedometer2"></i> Dashboard Mahasiswa</h2>
-                <p class="text-muted">Selamat datang di sistem manajemen UKM kampus</p>
+                <p class="text-muted">
+                    Selamat datang, <strong th:text="${user.nama}"></strong> (<span th:text="${user.nim}"></span>)
+                </p>
             </div>
+        </div>
+        
+        <!-- Info Kuota UKM -->
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            <strong>Status Keanggotaan:</strong> 
+            Anda sudah bergabung di <strong th:text="${jumlahUkmDiterima}"></strong> dari maksimal <strong>2 UKM</strong>
+            <span th:if="${jumlahUkmDiterima >= 2}" class="badge bg-danger ms-2">KUOTA PENUH</span>
         </div>
         
         <!-- Daftar UKM Tersedia -->
         <div class="card mb-4">
-            <div class="card-header bg-info text-white">
+            <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">
                     <i class="bi bi-list-ul"></i> Daftar UKM Tersedia
                 </h5>
@@ -58,44 +68,83 @@
             <div class="card-body">
                 <div class="row">
                     <div th:each="ukm : ${semuaUkm}" class="col-md-4 mb-3">
-                        <div class="card h-100">
+                        <div class="card h-100 shadow-sm">
                             <div class="card-body">
                                 <h5 class="card-title">
                                     <i class="bi bi-people"></i> 
                                     <span th:text="${ukm.nama}"></span>
                                 </h5>
-                                <p class="card-text" th:text="${ukm.deskripsi}"></p>
-                                <p class="text-muted small">
+                                <p class="card-text text-muted" th:text="${ukm.deskripsi}"></p>
+                                <p class="text-muted small mb-3">
                                     <i class="bi bi-person-badge"></i> 
                                     Ketua: <span th:text="${ukm.ketua?.nama} ?: 'Belum ada'"></span>
                                 </p>
                                 
-                                <!-- Cek apakah sudah mendaftar -->
-                                <div th:each="pendaftaran : ${pendaftaranSaya}">
-                                    <div th:if="${pendaftaran.ukm.id == ukm.id}">
-                                        <span class="badge" 
-                                              th:classappend="${pendaftaran.status == 'PENDING'} ? 'bg-warning' :
-                                                              ${pendaftaran.status == 'DITERIMA'} ? 'bg-success' : 'bg-danger'">
-                                            <span th:text="${pendaftaran.status}"></span>
-                                        </span>
-                                        <form th:if="${pendaftaran.status == 'PENDING'}" 
-                                              th:action="@{'/mahasiswa/batalkan/' + ${pendaftaran.id}}" 
-                                              method="post" class="mt-2">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-x-circle"></i> Batalkan
-                                            </button>
-                                        </form>
+                                <!-- CEK STATUS PENDAFTARAN -->
+                                <div th:if="${ukmIdTerdaftar.contains(ukm.id)}">
+                                    <!-- Jika sudah mendaftar, tampilkan status -->
+                                    <div th:each="p : ${pendaftaranSaya}">
+                                        <div th:if="${p.ukm.id == ukm.id}">
+                                            <span class="badge mb-2" 
+                                                  th:classappend="${p.status == 'PENDING'} ? 'bg-warning text-dark' :
+                                                                  ${p.status == 'DITERIMA'} ? 'bg-success' : 'bg-danger'"
+                                                  style="font-size: 0.9rem;">
+                                                <i class="bi" 
+                                                   th:classappend="${p.status == 'PENDING'} ? 'bi-hourglass-split' :
+                                                                   ${p.status == 'DITERIMA'} ? 'bi-check-circle' : 'bi-x-circle'"></i>
+                                                <span th:text="${p.status}"></span>
+                                            </span>
+                                            
+                                            <!-- Tombol Batalkan jika PENDING -->
+                                            <form th:if="${p.status == 'PENDING'}" 
+                                                  th:action="@{'/mahasiswa/batalkan/' + ${p.id}}" 
+                                                  method="post" 
+                                                  class="mt-2"
+                                                  onsubmit="return confirm('Yakin ingin membatalkan pendaftaran?')">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                                                    <i class="bi bi-x-circle"></i> Batalkan Pendaftaran
+                                                </button>
+                                            </form>
+                                            
+                                            <!-- Info jika sudah diterima -->
+                                            <div th:if="${p.status == 'DITERIMA'}" class="mt-2">
+                                                <small class="text-success">
+                                                    <i class="bi bi-check-circle"></i> Anda adalah anggota UKM ini
+                                                </small>
+                                            </div>
+                                            
+                                            <!-- Info jika ditolak -->
+                                            <div th:if="${p.status == 'DITOLAK'}" class="mt-2">
+                                                <small class="text-danger">
+                                                    <i class="bi bi-x-circle"></i> Pendaftaran ditolak
+                                                </small>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 
-                                <!-- Tombol daftar jika belum mendaftar -->
-                                <div th:if="${!#lists.contains(pendaftaranSaya.![ukm.id], ukm.id)}">
-                                    <form th:action="@{/mahasiswa/daftar}" method="post">
-                                        <input type="hidden" name="ukmId" th:value="${ukm.id}">
-                                        <button type="submit" class="btn btn-primary btn-sm">
-                                            <i class="bi bi-person-plus"></i> Daftar
+                                <!-- Tombol Daftar jika BELUM mendaftar -->
+                                <div th:unless="${ukmIdTerdaftar.contains(ukm.id)}">
+                                    <!-- Cek apakah kuota UKM sudah penuh -->
+                                    <div th:if="${jumlahUkmDiterima >= 2}">
+                                        <button class="btn btn-secondary btn-sm w-100" disabled>
+                                            <i class="bi bi-lock"></i> Kuota UKM Anda Penuh
                                         </button>
-                                    </form>
+                                        <small class="text-danger d-block mt-2">
+                                            Maksimal 2 UKM per mahasiswa
+                                        </small>
+                                    </div>
+                                    
+                                    <div th:unless="${jumlahUkmDiterima >= 2}">
+                                        <form th:action="@{/mahasiswa/daftar}" 
+                                              method="post"
+                                              onsubmit="return confirm('Daftar ke UKM ini?')">
+                                            <input type="hidden" name="ukmId" th:value="${ukm.id}">
+                                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                                                <i class="bi bi-person-plus"></i> Daftar Sekarang
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -104,15 +153,21 @@
             </div>
         </div>
         
-        <!-- Kegiatan UKM -->
+        <!-- Kegiatan UKM Saya -->
         <div class="card">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0">
-                    <i class="bi bi-calendar-event"></i> Jadwal Kegiatan UKM
+                    <i class="bi bi-calendar-event"></i> Jadwal Kegiatan UKM Saya
                 </h5>
             </div>
             <div class="card-body">
-                <div class="table-responsive">
+                <div th:if="${kegiatanSaya.empty}" class="text-center text-muted py-5">
+                    <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                    <p class="mt-3">Belum ada jadwal kegiatan</p>
+                    <small>Daftar ke UKM terlebih dahulu untuk melihat jadwal kegiatan</small>
+                </div>
+                
+                <div th:if="${!kegiatanSaya.empty}" class="table-responsive">
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
@@ -124,23 +179,23 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="kegiatan : ${kegiatan}">
+                            <tr th:each="kegiatan : ${kegiatanSaya}">
                                 <td>
                                     <span class="badge bg-primary" th:text="${kegiatan.ukm.nama}"></span>
                                 </td>
-                                <td th:text="${kegiatan.judul}"></td>
+                                <td>
+                                    <strong th:text="${kegiatan.judul}"></strong>
+                                </td>
                                 <td>
                                     <i class="bi bi-clock"></i> 
                                     <span th:text="${#temporals.format(kegiatan.tanggal, 'dd/MM/yyyy HH:mm')}"></span>
                                 </td>
-                                <td th:text="${kegiatan.lokasi}"></td>
+                                <td>
+                                    <i class="bi bi-geo-alt"></i> 
+                                    <span th:text="${kegiatan.lokasi}"></span>
+                                </td>
                                 <td>
                                     <small class="text-muted" th:text="${kegiatan.deskripsi}"></small>
-                                </td>
-                            </tr>
-                            <tr th:if="${kegiatan.empty}">
-                                <td colspan="5" class="text-center text-muted">
-                                    <i class="bi bi-calendar-x"></i> Belum ada kegiatan
                                 </td>
                             </tr>
                         </tbody>
@@ -148,10 +203,52 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Status Pendaftaran Saya -->
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-clipboard-check"></i> Status Pendaftaran Saya
+                </h5>
+            </div>
+            <div class="card-body">
+                <div th:if="${pendaftaranSaya.empty}" class="text-center text-muted py-4">
+                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Anda belum mendaftar ke UKM manapun</p>
+                </div>
+                
+                <div th:if="${!pendaftaranSaya.empty}">
+                    <div class="list-group">
+                        <div th:each="p : ${pendaftaranSaya}" 
+                             class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="bi bi-people"></i> 
+                                        <span th:text="${p.ukm.nama}"></span>
+                                    </h6>
+                                    <small class="text-muted">
+                                        Didaftar: <span th:text="${#temporals.format(p.tanggalDaftar, 'dd MMM yyyy HH:mm')}"></span>
+                                    </small>
+                                </div>
+                                <div>
+                                    <span class="badge" 
+                                          th:classappend="${p.status == 'PENDING'} ? 'bg-warning text-dark' :
+                                                          ${p.status == 'DITERIMA'} ? 'bg-success' : 'bg-danger'"
+                                          style="font-size: 0.9rem;">
+                                        <span th:text="${p.status}"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
     <!-- Footer -->
-    <footer class="mt-5 py-3 bg-light">
+    <footer class="mt-5 py-3 bg-white">
         <div class="container text-center">
             <p class="mb-0 text-muted">
                 &copy; 2024 Sistem Manajemen UKM - 

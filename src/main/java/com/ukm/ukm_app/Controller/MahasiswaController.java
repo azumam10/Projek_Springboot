@@ -2,6 +2,8 @@ package com.ukm.ukm_app.Controller;
 
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.ukm.ukm_app.entity.Kegiatan;
 import com.ukm.ukm_app.entity.Pendaftaran;
@@ -19,7 +22,7 @@ import com.ukm.ukm_app.entity.User;
 import com.ukm.ukm_app.repository.KegiatanRepository;
 import com.ukm.ukm_app.repository.PendaftaranRepository;
 import com.ukm.ukm_app.repository.UkmRepository;
-import com.ukm.ukm_app.repository.UserRepository;
+
 
 import jakarta.servlet.http.HttpSession;
 
@@ -36,16 +39,13 @@ public class MahasiswaController {
     @Autowired
     private PendaftaranRepository pendaftaranRepository;
     
-    @Autowired
-    private UserRepository userRepository;
-    
-    // MIDDLEWARE CEK LOGIN
+    // ========== MIDDLEWARE CEK LOGIN ==========
     private boolean checkAuth(HttpSession session, String requiredRole) {
         User user = (User) session.getAttribute("user");
         return user != null && requiredRole.equals(user.getRole());
     }
     
-    // DASHBOARD MAHASISWA
+    // ========== DASHBOARD MAHASISWA ==========
     @GetMapping("/dashboard")
     public String dashboard(HttpSession session, Model model) {
         if (!checkAuth(session, "MAHASISWA")) {
@@ -54,22 +54,50 @@ public class MahasiswaController {
         
         User user = (User) session.getAttribute("user");
         
-        // Data untuk dashboard
+        // Ambil semua UKM
         List<Ukm> semuaUkm = ukmRepository.findAll();
-        List<Kegiatan> kegiatanMingguan = kegiatanRepository.findByOrderByTanggalAsc();
+        
+        // Ambil pendaftaran mahasiswa ini
         List<Pendaftaran> pendaftaranSaya = pendaftaranRepository.findByMahasiswa(user);
+        
+        // Ambil kegiatan dari UKM yang sudah diterima
+        List<Long> ukmIdDiterima = pendaftaranSaya.stream()
+            .filter(p -> "DITERIMA".equals(p.getStatus()))
+            .map(p -> p.getUkm().getId())
+            .toList();
+        
+        List<Kegiatan> kegiatanSaya = kegiatanRepository.findByOrderByTanggalAsc()
+            .stream()
+            .filter(k -> ukmIdDiterima.contains(k.getUkm().getId()))
+            .toList();
+        
+        // Buat Set ID UKM yang sudah didaftar (untuk helper di Thymeleaf)
+        Set<Long> ukmIdTerdaftar = pendaftaranSaya.stream()
+            .map(p -> p.getUkm().getId())
+            .collect(Collectors.toSet());
+        
+        // Hitung jumlah UKM yang sudah DITERIMA
+        long jumlahUkmDiterima = pendaftaranSaya.stream()
+            .filter(p -> "DITERIMA".equals(p.getStatus()))
+            .count();
         
         model.addAttribute("user", user);
         model.addAttribute("semuaUkm", semuaUkm);
-        model.addAttribute("kegiatan", kegiatanMingguan);
         model.addAttribute("pendaftaranSaya", pendaftaranSaya);
+        model.addAttribute("kegiatanSaya", kegiatanSaya);
+        model.addAttribute("ukmIdTerdaftar", ukmIdTerdaftar);
+        model.addAttribute("jumlahUkmDiterima", jumlahUkmDiterima);
         
         return "mahasiswa/dashboard";
     }
     
-    // DAFTAR KE UKM
+    // ========== DAFTAR KE UKM ==========
     @PostMapping("/daftar")
-    public String daftarUkm(@RequestParam Long ukmId, HttpSession session) {
+    public String daftarUkm(
+            @RequestParam Long ukmId, 
+            HttpSession session,
+            RedirectAttributes redirect) {
+        
         if (!checkAuth(session, "MAHASISWA")) {
             return "redirect:/login";
         }
@@ -78,27 +106,49 @@ public class MahasiswaController {
         Ukm ukm = ukmRepository.findById(ukmId).orElse(null);
         
         if (ukm == null) {
-            return "redirect:/mahasiswa/dashboard?error=UKM tidak ditemukan";
+            redirect.addFlashAttribute("error", "UKM tidak ditemukan");
+            return "redirect:/mahasiswa/dashboard";
         }
         
-        // Cek apakah sudah mendaftar
+        // Validasi 1: Cek apakah sudah mendaftar ke UKM ini
         Pendaftaran existing = pendaftaranRepository.findByMahasiswaAndUkm(mahasiswa, ukm);
         if (existing != null) {
-            return "redirect:/mahasiswa/dashboard?error=Anda sudah mendaftar ke UKM ini";
+            redirect.addFlashAttribute("error", "Anda sudah mendaftar ke UKM ini");
+            return "redirect:/mahasiswa/dashboard";
+        }
+        
+        // Validasi 2: Cek jumlah UKM yang sudah DITERIMA (max 2)
+        long jumlahUkmDiterima = pendaftaranRepository.findByMahasiswa(mahasiswa)
+            .stream()
+            .filter(p -> "DITERIMA".equals(p.getStatus()))
+            .count();
+        
+        if (jumlahUkmDiterima >= 2) {
+            redirect.addFlashAttribute("error", 
+                "Anda sudah bergabung di 2 UKM. Maksimal hanya 2 UKM per mahasiswa.");
+            return "redirect:/mahasiswa/dashboard";
         }
         
         // Buat pendaftaran baru
         Pendaftaran pendaftaran = new Pendaftaran();
         pendaftaran.setMahasiswa(mahasiswa);
         pendaftaran.setUkm(ukm);
+        pendaftaran.setStatus("PENDING");
         pendaftaranRepository.save(pendaftaran);
         
-        return "redirect:/mahasiswa/dashboard?success=Pendaftaran berhasil! Tunggu verifikasi admin UKM";
+        redirect.addFlashAttribute("success", 
+            "Pendaftaran ke " + ukm.getNama() + " berhasil! Tunggu verifikasi admin UKM.");
+        
+        return "redirect:/mahasiswa/dashboard";
     }
     
-    // BATALKAN PENDAFTARAN
+    // ========== BATALKAN PENDAFTARAN ==========
     @PostMapping("/batalkan/{id}")
-    public String batalkanPendaftaran(@PathVariable Long id, HttpSession session) {
+    public String batalkanPendaftaran(
+            @PathVariable Long id, 
+            HttpSession session,
+            RedirectAttributes redirect) {
+        
         if (!checkAuth(session, "MAHASISWA")) {
             return "redirect:/login";
         }
@@ -106,15 +156,31 @@ public class MahasiswaController {
         User mahasiswa = (User) session.getAttribute("user");
         Pendaftaran pendaftaran = pendaftaranRepository.findById(id).orElse(null);
         
-        // Validasi: hanya bisa membatalkan pendaftaran sendiri yang statusnya PENDING
-        if (pendaftaran != null && 
-            pendaftaran.getMahasiswa().getId().equals(mahasiswa.getId()) &&
-            "PENDING".equals(pendaftaran.getStatus())) {
-            
-            pendaftaranRepository.delete(pendaftaran);
-            return "redirect:/mahasiswa/dashboard?success=Pendaftaran dibatalkan";
+        // Validasi 1: Pendaftaran harus ada
+        if (pendaftaran == null) {
+            redirect.addFlashAttribute("error", "Pendaftaran tidak ditemukan");
+            return "redirect:/mahasiswa/dashboard";
         }
         
-        return "redirect:/mahasiswa/dashboard?error=Tidak dapat membatalkan pendaftaran";
+        // Validasi 2: Hanya bisa membatalkan pendaftaran sendiri
+        if (!pendaftaran.getMahasiswa().getId().equals(mahasiswa.getId())) {
+            redirect.addFlashAttribute("error", "Anda tidak memiliki akses untuk membatalkan pendaftaran ini");
+            return "redirect:/mahasiswa/dashboard";
+        }
+        
+        // Validasi 3: Hanya bisa batalkan jika status PENDING
+        if (!"PENDING".equals(pendaftaran.getStatus())) {
+            redirect.addFlashAttribute("error", 
+                "Tidak dapat membatalkan pendaftaran. Status: " + pendaftaran.getStatus());
+            return "redirect:/mahasiswa/dashboard";
+        }
+        
+        // Hapus pendaftaran
+        String namaUkm = pendaftaran.getUkm().getNama();
+        pendaftaranRepository.delete(pendaftaran);
+        
+        redirect.addFlashAttribute("success", "Pendaftaran ke " + namaUkm + " berhasil dibatalkan");
+        
+        return "redirect:/mahasiswa/dashboard";
     }
 }

@@ -1,69 +1,267 @@
-<!-- src/main/resources/templates/ukm/dashboard.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin UKM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
 </head>
-<body>
-    <nav class="navbar navbar-dark bg-success">
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
         <div class="container">
-            <span class="navbar-brand">
-                Dashboard Admin UKM - <span th:text="${ukm.nama}"></span>
-            </span>
-            <div>
-                <span class="text-white me-3" th:text="${user.nama}"></span>
-                <a href="/logout" class="btn btn-outline-light">Logout</a>
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-people-fill"></i> Dashboard Admin UKM
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3 text-white">
+                    <i class="bi bi-person-circle"></i> 
+                    <span th:text="${user.nama}"></span>
+                </span>
+                <a class="btn btn-outline-light btn-sm" href="/logout">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
             </div>
         </div>
     </nav>
     
     <div class="container mt-4">
-        <h3>Selamat Datang, <span th:text="${user.nama}"></span></h3>
-        <p>Anda mengelola UKM: <strong th:text="${ukm.nama}"></strong></p>
+        <!-- Alert Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle-fill"></i>
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
         
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Pendaftaran Menunggu</h5>
-                    </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <h2>
+                    <i class="bi bi-award"></i> 
+                    <span th:text="${ukm.nama}"></span>
+                </h2>
+                <p class="text-muted" th:text="${ukm.deskripsi}"></p>
+            </div>
+        </div>
+        
+        <!-- Statistik Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-warning">
                     <div class="card-body">
-                        <div th:each="p : ${pendaftaran}">
-                            <div th:if="${p.status == 'PENDING'}" class="mb-2">
-                                <span th:text="${p.mahasiswa.nama}"></span>
-                                <span th:text="${p.mahasiswa.nim}"></span>
-                                <a th:href="@{'/ukm/terima/' + ${p.id}}" class="btn btn-sm btn-success">Terima</a>
-                                <a th:href="@{'/ukm/tolak/' + ${p.id}}" class="btn btn-sm btn-danger">Tolak</a>
-                            </div>
-                        </div>
-                        <div th:if="${pendaftaran.?[status == 'PENDING'].isEmpty()}">
-                            Tidak ada pendaftaran menunggu
-                        </div>
+                        <h5 class="card-title">
+                            <i class="bi bi-hourglass-split"></i> Pendaftaran Pending
+                        </h5>
+                        <h2 class="mb-0" th:text="${pendaftaranPending.size()}"></h2>
                     </div>
                 </div>
             </div>
-            
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Kegiatan UKM</h5>
-                    </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
                     <div class="card-body">
-                        <a href="/ukm/kegiatan/tambah" class="btn btn-primary mb-3">
-                            + Tambah Kegiatan
-                        </a>
-                        <div th:each="k : ${kegiatan}">
-                            <div class="mb-2">
-                                <strong th:text="${k.judul}"></strong><br>
-                                <small th:text="${k.tanggal}"></small>
-                            </div>
-                        </div>
+                        <h5 class="card-title">
+                            <i class="bi bi-people"></i> Total Anggota
+                        </h5>
+                        <h2 class="mb-0" th:text="${totalAnggota}"></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="bi bi-calendar-event"></i> Total Kegiatan
+                        </h5>
+                        <h2 class="mb-0" th:text="${kegiatan.size()}"></h2>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <!-- Pendaftaran Menunggu -->
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-hourglass-split"></i> Pendaftaran Menunggu Verifikasi
+                </h5>
+            </div>
+            <div class="card-body">
+                <div th:if="${pendaftaranPending.empty}" class="text-center text-muted py-4">
+                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Tidak ada pendaftaran yang menunggu</p>
+                </div>
+                
+                <div th:if="${!pendaftaranPending.empty}" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>NIM</th>
+                                <th>Nama Mahasiswa</th>
+                                <th>Email</th>
+                                <th>Tanggal Daftar</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="p : ${pendaftaranPending}">
+                                <td th:text="${p.mahasiswa.nim}"></td>
+                                <td>
+                                    <i class="bi bi-person"></i> 
+                                    <span th:text="${p.mahasiswa.nama}"></span>
+                                </td>
+                                <td th:text="${p.mahasiswa.email}"></td>
+                                <td>
+                                    <small th:text="${#temporals.format(p.tanggalDaftar, 'dd/MM/yyyy HH:mm')}"></small>
+                                </td>
+                                <td>
+                                    <form th:action="@{'/ukm/terima/' + ${p.id}}" 
+                                          method="post" 
+                                          style="display:inline;"
+                                          onsubmit="return confirm('Terima pendaftaran ini?')">
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="bi bi-check-circle"></i> Terima
+                                        </button>
+                                    </form>
+                                    <form th:action="@{'/ukm/tolak/' + ${p.id}}" 
+                                          method="post" 
+                                          style="display:inline;"
+                                          onsubmit="return confirm('Tolak pendaftaran ini?')">
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="bi bi-x-circle"></i> Tolak
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Anggota yang Sudah Diterima -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Daftar Anggota UKM
+                </h5>
+            </div>
+            <div class="card-body">
+                <div th:if="${pendaftaranDiterima.empty}" class="text-center text-muted py-4">
+                    <i class="bi bi-people" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Belum ada anggota yang diterima</p>
+                </div>
+                
+                <div th:if="${!pendaftaranDiterima.empty}" class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>NIM</th>
+                                <th>Nama</th>
+                                <th>Email</th>
+                                <th>Bergabung Sejak</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="p, iterStat : ${pendaftaranDiterima}">
+                                <td th:text="${iterStat.count}"></td>
+                                <td th:text="${p.mahasiswa.nim}"></td>
+                                <td th:text="${p.mahasiswa.nama}"></td>
+                                <td th:text="${p.mahasiswa.email}"></td>
+                                <td>
+                                    <small th:text="${#temporals.format(p.tanggalDaftar, 'dd MMM yyyy')}"></small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Kegiatan UKM -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-event"></i> Jadwal Kegiatan
+                    </h5>
+                    <a href="/ukm/kegiatan/tambah" class="btn btn-light btn-sm">
+                        <i class="bi bi-plus-circle"></i> Tambah Kegiatan
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div th:if="${kegiatan.empty}" class="text-center text-muted py-4">
+                    <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Belum ada kegiatan yang dijadwalkan</p>
+                    <a href="/ukm/kegiatan/tambah" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Tambah Kegiatan Pertama
+                    </a>
+                </div>
+                
+                <div th:if="${!kegiatan.empty}" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Judul Kegiatan</th>
+                                <th>Tanggal & Waktu</th>
+                                <th>Lokasi</th>
+                                <th>Deskripsi</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="k : ${kegiatan}">
+                                <td>
+                                    <strong th:text="${k.judul}"></strong>
+                                </td>
+                                <td>
+                                    <i class="bi bi-clock"></i> 
+                                    <span th:text="${#temporals.format(k.tanggal, 'dd/MM/yyyy HH:mm')}"></span>
+                                </td>
+                                <td>
+                                    <i class="bi bi-geo-alt"></i> 
+                                    <span th:text="${k.lokasi}"></span>
+                                </td>
+                                <td>
+                                    <small class="text-muted" th:text="${k.deskripsi}"></small>
+                                </td>
+                                <td>
+                                    <form th:action="@{'/ukm/kegiatan/hapus/' + ${k.id}}" 
+                                          method="post" 
+                                          style="display:inline;"
+                                          onsubmit="return confirm('Hapus kegiatan ini?')">
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="bi bi-trash"></i> Hapus
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
+    
+    <!-- Footer -->
+    <footer class="mt-5 py-3 bg-white">
+        <div class="container text-center">
+            <p class="mb-0 text-muted">
+                &copy; 2024 Sistem Manajemen UKM - 
+                <span th:text="${ukm.nama}"></span>
+            </p>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

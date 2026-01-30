@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail UKM</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a href="/admin/dashboard" class="navbar-brand">
+                <i class="bi bi-arrow-left-circle"></i> Kembali ke Dashboard
+            </a>
+            <span class="navbar-text text-white">
+                <i class="bi bi-person-circle"></i> 
+                <span th:text="${user.nama}"></span>
+            </span>
+        </div>
+    </nav>
+    
+    <div class="container mt-4">
+        <!-- Header UKM -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h2>
+                            <i class="bi bi-award"></i> 
+                            <span th:text="${ukm.nama}"></span>
+                        </h2>
+                        <p class="text-muted" th:text="${ukm.deskripsi}"></p>
+                        <p>
+                            <strong>Ketua UKM:</strong> 
+                            <span th:text="${ukm.ketua?.nama} ?: 'Belum ada'"></span>
+                        </p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h6>Total Anggota</h6>
+                                <h1 th:text="${anggota.size()}"></h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Daftar Anggota -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Daftar Anggota
+                </h5>
+            </div>
+            <div class="card-body">
+                <div th:if="${anggota.empty}" class="text-center text-muted py-4">
+                    <i class="bi bi-people" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Belum ada anggota yang terdaftar</p>
+                </div>
+                
+                <div th:if="${!anggota.empty}" class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>NIM</th>
+                                <th>Nama Mahasiswa</th>
+                                <th>Email</th>
+                                <th>Bergabung Sejak</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="p, iterStat : ${anggota}">
+                                <td th:text="${iterStat.count}"></td>
+                                <td th:text="${p.mahasiswa.nim}"></td>
+                                <td th:text="${p.mahasiswa.nama}"></td>
+                                <td th:text="${p.mahasiswa.email}"></td>
+                                <td th:text="${#temporals.format(p.tanggalDaftar, 'dd MMM yyyy')}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Kegiatan UKM -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-event"></i> Jadwal Kegiatan
+                </h5>
+            </div>
+            <div class="card-body">
+                <div th:if="${kegiatan.empty}" class="text-center text-muted py-4">
+                    <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Belum ada kegiatan yang dijadwalkan</p>
+                </div>
+                
+                <div th:if="${!kegiatan.empty}" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Judul Kegiatan</th>
+                                <th>Tanggal & Waktu</th>
+                                <th>Lokasi</th>
+                                <th>Deskripsi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="k : ${kegiatan}">
+                                <td>
+                                    <strong th:text="${k.judul}"></strong>
+                                </td>
+                                <td>
+                                    <i class="bi bi-clock"></i> 
+                                    <span th:text="${#temporals.format(k.tanggal, 'dd/MM/yyyy HH:mm')}"></span>
+                                </td>
+                                <td>
+                                    <i class="bi bi-geo-alt"></i> 
+                                    <span th:text="${k.lokasi}"></span>
+                                </td>
+                                <td>
+                                    <small class="text-muted" th:text="${k.deskripsi}"></small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="mt-5 py-3 bg-white">
+        <div class="container text-center">
+            <p class="mb-0 text-muted">
+                &copy; 2024 Sistem Manajemen UKM
+            </p>
+        </div>
+    </footer>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

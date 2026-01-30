@@ -2,30 +2,195 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin Kampus</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
 </head>
-<body>
-    <h1>Dashboard Admin Kampus</h1>
-    <div th:if="${user}">
-        <p>Welcome, <span th:text="${user.nama}"></span> (<span th:text="${user.role}"></span>)</p>
-        <p>Email: <span th:text="${user.email}"></span></p>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-shield-check"></i> Dashboard Admin Kampus
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3 text-white">
+                    <i class="bi bi-person-circle"></i> 
+                    <span th:text="${user.nama}"></span>
+                </span>
+                <a class="btn btn-outline-light btn-sm" href="/logout">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <h2><i class="bi bi-speedometer2"></i> Monitoring Sistem UKM</h2>
+                <p class="text-muted">Pantau aktivitas dan statistik seluruh UKM di kampus</p>
+            </div>
+        </div>
+        
+        <!-- Statistik Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-people"></i> Total UKM
+                        </h6>
+                        <h2 class="mb-0" th:text="${totalUkm}"></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-person"></i> Total Mahasiswa
+                        </h6>
+                        <h2 class="mb-0" th:text="${totalMahasiswa}"></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-person-badge"></i> Admin UKM
+                        </h6>
+                        <h2 class="mb-0" th:text="${totalAdminUkm}"></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="bi bi-calendar-event"></i> Total Kegiatan
+                        </h6>
+                        <h2 class="mb-0" th:text="${totalKegiatan}"></h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Daftar UKM dan Jumlah Anggota -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Daftar UKM & Jumlah Anggota
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>No</th>
+                                <th>Nama UKM</th>
+                                <th>Deskripsi</th>
+                                <th>Ketua</th>
+                                <th>Jumlah Anggota</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="ukm, iterStat : ${semuaUkm}">
+                                <td th:text="${iterStat.count}"></td>
+                                <td>
+                                    <strong th:text="${ukm.nama}"></strong>
+                                </td>
+                                <td>
+                                    <small class="text-muted" th:text="${ukm.deskripsi}"></small>
+                                </td>
+                                <td th:text="${ukm.ketua?.nama} ?: '-'"></td>
+                                <td>
+                                    <span class="badge bg-success" th:text="${jumlahAnggotaPerUkm.get(ukm.id)}"></span>
+                                    anggota
+                                </td>
+                                <td>
+                                    <a th:href="@{'/admin/ukm/' + ${ukm.id}}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye"></i> Detail
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${semuaUkm.empty}">
+                                <td colspan="6" class="text-center text-muted">
+                                    Belum ada UKM terdaftar
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Jadwal Kegiatan Semua UKM -->
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-event"></i> Jadwal Kegiatan Seluruh UKM
+                </h5>
+            </div>
+            <div class="card-body">
+                <div th:if="${semuaKegiatan.empty}" class="text-center text-muted py-5">
+                    <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                    <p class="mt-3">Belum ada kegiatan yang dijadwalkan</p>
+                </div>
+                
+                <div th:if="${!semuaKegiatan.empty}" class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>UKM</th>
+                                <th>Judul Kegiatan</th>
+                                <th>Tanggal & Waktu</th>
+                                <th>Lokasi</th>
+                                <th>Deskripsi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="kegiatan : ${semuaKegiatan}">
+                                <td>
+                                    <span class="badge bg-primary" th:text="${kegiatan.ukm.nama}"></span>
+                                </td>
+                                <td>
+                                    <strong th:text="${kegiatan.judul}"></strong>
+                                </td>
+                                <td>
+                                    <i class="bi bi-clock"></i> 
+                                    <span th:text="${#temporals.format(kegiatan.tanggal, 'dd/MM/yyyy HH:mm')}"></span>
+                                </td>
+                                <td>
+                                    <i class="bi bi-geo-alt"></i> 
+                                    <span th:text="${kegiatan.lokasi}"></span>
+                                </td>
+                                <td>
+                                    <small class="text-muted" th:text="${kegiatan.deskripsi}"></small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
     
-    <h2>Statistik:</h2>
-    <ul>
-        <li>Total UKM: <span th:text="${totalUkm}"></span></li>
-        <li>Total Mahasiswa: <span th:text="${totalMahasiswa}"></span></li>
-        <li>Total Admin UKM: <span th:text="${totalAdminUkm}"></span></li>
-    </ul>
+    <!-- Footer -->
+    <footer class="mt-5 py-3 bg-white">
+        <div class="container text-center">
+            <p class="mb-0 text-muted">
+                &copy; 2024 Sistem Manajemen UKM - Admin Kampus
+            </p>
+        </div>
+    </footer>
     
-    <h2>Daftar UKM:</h2>
-    <ul th:if="${listUkm}">
-        <li th:each="ukm : ${listUkm}" th:text="${ukm.nama}"></li>
-    </ul>
-    
-    <a href="/logout">Logout</a>
-    <hr>
-    <p>Debug Info:</p>
-    <p>User in session: <span th:text="${user}"></span></p>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

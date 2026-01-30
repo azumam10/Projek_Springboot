@@ -1,7 +1,7 @@
 package com.ukm.ukm_app.entity;
 
-import java.time.LocalDateTime;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "kegiatan")
@@ -25,7 +25,18 @@ public class Kegiatan {
     @JoinColumn(name = "ukm_id", nullable = false)
     private Ukm ukm;
     
-    // ========== GETTER SETTER ==========
+    // CONSTRUCTORS
+    public Kegiatan() {}
+    
+    public Kegiatan(String judul, String deskripsi, LocalDateTime tanggal, String lokasi, Ukm ukm) {
+        this.judul = judul;
+        this.deskripsi = deskripsi;
+        this.tanggal = tanggal;
+        this.lokasi = lokasi;
+        this.ukm = ukm;
+    }
+    
+    // GETTERS & SETTERS
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     

@@ -13,4 +13,5 @@ public interface PendaftaranRepository extends JpaRepository<Pendaftaran, Long> 
     List<Pendaftaran> findByUkm(Ukm ukm);
     List<Pendaftaran> findByMahasiswa(User mahasiswa);
     List<Pendaftaran> findByStatus(String status);
+    
 }
