@@ -1,6 +1,5 @@
 package com.ukm.ukm_app.Controller;
 
-
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,7 +21,6 @@ import com.ukm.ukm_app.entity.User;
 import com.ukm.ukm_app.repository.KegiatanRepository;
 import com.ukm.ukm_app.repository.PendaftaranRepository;
 import com.ukm.ukm_app.repository.UkmRepository;
-
 
 import jakarta.servlet.http.HttpSession;
 
@@ -98,46 +96,80 @@ public class MahasiswaController {
             HttpSession session,
             RedirectAttributes redirect) {
         
+        // Cek autentikasi
         if (!checkAuth(session, "MAHASISWA")) {
             return "redirect:/login";
         }
         
         User mahasiswa = (User) session.getAttribute("user");
-        Ukm ukm = ukmRepository.findById(ukmId).orElse(null);
         
-        if (ukm == null) {
-            redirect.addFlashAttribute("error", "UKM tidak ditemukan");
+        // ========== PERBAIKAN: TAMBAH TRY-CATCH ==========
+        try {
+            System.out.println("=== PROSES DAFTAR UKM ===");
+            System.out.println("Mahasiswa: " + mahasiswa.getNama() + " (ID: " + mahasiswa.getId() + ")");
+            System.out.println("UKM ID: " + ukmId);
+            
+            // Cari UKM
+            Ukm ukm = ukmRepository.findById(ukmId).orElse(null);
+            
+            if (ukm == null) {
+                System.out.println("ERROR: UKM tidak ditemukan dengan ID: " + ukmId);
+                redirect.addFlashAttribute("error", "UKM tidak ditemukan");
+                return "redirect:/mahasiswa/dashboard";
+            }
+            
+            System.out.println("UKM ditemukan: " + ukm.getNama());
+            
+            // Validasi 1: Cek apakah sudah mendaftar ke UKM ini
+            Pendaftaran existing = pendaftaranRepository.findByMahasiswaAndUkm(mahasiswa, ukm);
+            if (existing != null) {
+                System.out.println("ERROR: Mahasiswa sudah mendaftar ke UKM ini");
+                redirect.addFlashAttribute("error", "Anda sudah mendaftar ke UKM ini");
+                return "redirect:/mahasiswa/dashboard";
+            }
+            
+            // Validasi 2: Cek jumlah UKM yang sudah DITERIMA (max 2)
+            long jumlahUkmDiterima = pendaftaranRepository.findByMahasiswa(mahasiswa)
+                .stream()
+                .filter(p -> "DITERIMA".equals(p.getStatus()))
+                .count();
+            
+            System.out.println("Jumlah UKM yang sudah diterima: " + jumlahUkmDiterima);
+            
+            if (jumlahUkmDiterima >= 2) {
+                System.out.println("ERROR: Kuota UKM sudah penuh (2/2)");
+                redirect.addFlashAttribute("error", "Kuota penuh! Maksimal 2 UKM per mahasiswa");
+                return "redirect:/mahasiswa/dashboard";
+            }
+            
+            // Buat pendaftaran baru
+            Pendaftaran pendaftaran = new Pendaftaran();
+            pendaftaran.setMahasiswa(mahasiswa);
+            pendaftaran.setUkm(ukm);
+            pendaftaran.setStatus("PENDING");
+            
+            // Simpan ke database
+            pendaftaranRepository.save(pendaftaran);
+            
+            System.out.println("SUCCESS: Pendaftaran berhasil disimpan dengan ID: " + pendaftaran.getId());
+            
+            // ========== PERBAIKAN: PESAN SUKSES LEBIH PENDEK ==========
+            redirect.addFlashAttribute("success", "Pendaftaran berhasil! Tunggu verifikasi admin");
+            
+        } catch (Exception e) {
+            // ========== PERBAIKAN: HANDLE ERROR ==========
+            System.err.println("========================================");
+            System.err.println("ERROR SAAT DAFTAR UKM!");
+            System.err.println("========================================");
+            System.err.println("Error Message: " + e.getMessage());
+            System.err.println("Error Type: " + e.getClass().getName());
+            System.err.println("Stack Trace:");
+            e.printStackTrace();
+            System.err.println("========================================");
+            
+            redirect.addFlashAttribute("error", "Terjadi kesalahan sistem. Silakan coba lagi");
             return "redirect:/mahasiswa/dashboard";
         }
-        
-        // Validasi 1: Cek apakah sudah mendaftar ke UKM ini
-        Pendaftaran existing = pendaftaranRepository.findByMahasiswaAndUkm(mahasiswa, ukm);
-        if (existing != null) {
-            redirect.addFlashAttribute("error", "Anda sudah mendaftar ke UKM ini");
-            return "redirect:/mahasiswa/dashboard";
-        }
-        
-        // Validasi 2: Cek jumlah UKM yang sudah DITERIMA (max 2)
-        long jumlahUkmDiterima = pendaftaranRepository.findByMahasiswa(mahasiswa)
-            .stream()
-            .filter(p -> "DITERIMA".equals(p.getStatus()))
-            .count();
-        
-        if (jumlahUkmDiterima >= 2) {
-            redirect.addFlashAttribute("error", 
-                "Anda sudah bergabung di 2 UKM. Maksimal hanya 2 UKM per mahasiswa.");
-            return "redirect:/mahasiswa/dashboard";
-        }
-        
-        // Buat pendaftaran baru
-        Pendaftaran pendaftaran = new Pendaftaran();
-        pendaftaran.setMahasiswa(mahasiswa);
-        pendaftaran.setUkm(ukm);
-        pendaftaran.setStatus("PENDING");
-        pendaftaranRepository.save(pendaftaran);
-        
-        redirect.addFlashAttribute("success", 
-            "Pendaftaran ke " + ukm.getNama() + " berhasil! Tunggu verifikasi admin UKM.");
         
         return "redirect:/mahasiswa/dashboard";
     }
@@ -149,37 +181,67 @@ public class MahasiswaController {
             HttpSession session,
             RedirectAttributes redirect) {
         
+        // Cek autentikasi
         if (!checkAuth(session, "MAHASISWA")) {
             return "redirect:/login";
         }
         
         User mahasiswa = (User) session.getAttribute("user");
-        Pendaftaran pendaftaran = pendaftaranRepository.findById(id).orElse(null);
         
-        // Validasi 1: Pendaftaran harus ada
-        if (pendaftaran == null) {
-            redirect.addFlashAttribute("error", "Pendaftaran tidak ditemukan");
+        // ========== PERBAIKAN: TAMBAH TRY-CATCH ==========
+        try {
+            System.out.println("=== PROSES BATALKAN PENDAFTARAN ===");
+            System.out.println("Mahasiswa: " + mahasiswa.getNama() + " (ID: " + mahasiswa.getId() + ")");
+            System.out.println("Pendaftaran ID: " + id);
+            
+            // Cari pendaftaran
+            Pendaftaran pendaftaran = pendaftaranRepository.findById(id).orElse(null);
+            
+            // Validasi 1: Pendaftaran harus ada
+            if (pendaftaran == null) {
+                System.out.println("ERROR: Pendaftaran tidak ditemukan dengan ID: " + id);
+                redirect.addFlashAttribute("error", "Pendaftaran tidak ditemukan");
+                return "redirect:/mahasiswa/dashboard";
+            }
+            
+            System.out.println("Pendaftaran ditemukan: " + pendaftaran.getUkm().getNama());
+            
+            // Validasi 2: Hanya bisa membatalkan pendaftaran sendiri
+            if (!pendaftaran.getMahasiswa().getId().equals(mahasiswa.getId())) {
+                System.out.println("ERROR: Mahasiswa tidak memiliki akses");
+                redirect.addFlashAttribute("error", "Akses ditolak");
+                return "redirect:/mahasiswa/dashboard";
+            }
+            
+            // Validasi 3: Hanya bisa batalkan jika status PENDING
+            if (!"PENDING".equals(pendaftaran.getStatus())) {
+                System.out.println("ERROR: Status bukan PENDING: " + pendaftaran.getStatus());
+                redirect.addFlashAttribute("error", "Tidak dapat dibatalkan. Status: " + pendaftaran.getStatus());
+                return "redirect:/mahasiswa/dashboard";
+            }
+            
+            // Hapus pendaftaran
+            String namaUkm = pendaftaran.getUkm().getNama();
+            pendaftaranRepository.delete(pendaftaran);
+            
+            System.out.println("SUCCESS: Pendaftaran berhasil dihapus");
+            
+            redirect.addFlashAttribute("success", "Pendaftaran berhasil dibatalkan");
+            
+        } catch (Exception e) {
+            // ========== PERBAIKAN: HANDLE ERROR ==========
+            System.err.println("========================================");
+            System.err.println("ERROR SAAT BATALKAN PENDAFTARAN!");
+            System.err.println("========================================");
+            System.err.println("Error Message: " + e.getMessage());
+            System.err.println("Error Type: " + e.getClass().getName());
+            System.err.println("Stack Trace:");
+            e.printStackTrace();
+            System.err.println("========================================");
+            
+            redirect.addFlashAttribute("error", "Terjadi kesalahan sistem. Silakan coba lagi");
             return "redirect:/mahasiswa/dashboard";
         }
-        
-        // Validasi 2: Hanya bisa membatalkan pendaftaran sendiri
-        if (!pendaftaran.getMahasiswa().getId().equals(mahasiswa.getId())) {
-            redirect.addFlashAttribute("error", "Anda tidak memiliki akses untuk membatalkan pendaftaran ini");
-            return "redirect:/mahasiswa/dashboard";
-        }
-        
-        // Validasi 3: Hanya bisa batalkan jika status PENDING
-        if (!"PENDING".equals(pendaftaran.getStatus())) {
-            redirect.addFlashAttribute("error", 
-                "Tidak dapat membatalkan pendaftaran. Status: " + pendaftaran.getStatus());
-            return "redirect:/mahasiswa/dashboard";
-        }
-        
-        // Hapus pendaftaran
-        String namaUkm = pendaftaran.getUkm().getNama();
-        pendaftaranRepository.delete(pendaftaran);
-        
-        redirect.addFlashAttribute("success", "Pendaftaran ke " + namaUkm + " berhasil dibatalkan");
         
         return "redirect:/mahasiswa/dashboard";
     }
